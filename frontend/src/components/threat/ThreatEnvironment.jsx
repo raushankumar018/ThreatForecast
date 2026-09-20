@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { useThreat } from '../../context/ThreatContext';
@@ -361,12 +361,16 @@ export default function ThreatEnvironment() {
 
     // Animation Loop
     let animId;
-    let clock = new THREE.Clock();
+    const startTime = performance.now();
+    let lastTime = startTime;
 
     const animate = () => {
       animId = requestAnimationFrame(animate);
-      const delta = clock.getDelta();
-      const elapsed = clock.getElapsedTime();
+      
+      const now = performance.now();
+      const delta = (now - lastTime) / 1000;
+      const elapsed = (now - startTime) / 1000;
+      lastTime = now;
 
       // Controls update with damping
       controls.update();
@@ -388,9 +392,9 @@ export default function ThreatEnvironment() {
       }
 
       // Smooth Node Emissive Decay (Real traffic reactive pulse)
-      const now = Date.now();
+      const currentTime = Date.now();
       createdNodes.forEach((node) => {
-        const timeSinceActivity = now - (node.lastActivity || 0);
+        const timeSinceActivity = currentTime - (node.lastActivity || 0);
         if (timeSinceActivity < 600) {
           // Temporarily highlight node on packet arrival
           const factor = 1 - timeSinceActivity / 600;

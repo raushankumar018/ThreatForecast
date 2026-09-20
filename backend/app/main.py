@@ -4,13 +4,7 @@ import shutil
 import uuid
 
 from fastapi import (
-    FastAPI,
-    HTTPException,
-    WebSocket,
-    WebSocketDisconnect,
-    UploadFile,
-    File,
-    Request,
+    FastAPI,HTTPException,WebSocket,WebSocketDisconnect,UploadFile,File,Request,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field

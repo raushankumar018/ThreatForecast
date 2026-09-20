@@ -13,10 +13,19 @@ class LiveWebSocketService {
     };
     this.state = 'disconnected';
     this.reconnectTimer = null;
+    this.disconnectTimer = null;
     this.isStopped = false;
+    this.refCount = 0;
   }
 
   connect() {
+    this.refCount++;
+    
+    if (this.disconnectTimer) {
+      clearTimeout(this.disconnectTimer);
+      this.disconnectTimer = null;
+    }
+
     if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
       return;
     }
@@ -26,9 +35,11 @@ class LiveWebSocketService {
 
     try {
       const url = wsUrl();
+      console.log('[WS] CONNECTING TO:', url);
       this.ws = new WebSocket(url);
 
       this.ws.onopen = () => {
+        console.log('[WS] OPEN:', url);
         this.updateState('connected');
         if (this.reconnectTimer) {
           clearTimeout(this.reconnectTimer);
@@ -50,11 +61,19 @@ class LiveWebSocketService {
         }
       };
 
-      this.ws.onerror = () => {
+      this.ws.onerror = (event) => {
+        console.error('[WS] ERROR:', event);
+        console.error('[WS] URL:', url);
         this.updateState('error');
       };
 
-      this.ws.onclose = () => {
+      this.ws.onclose = (event) => {
+        console.error(
+          '[WS] CLOSE:',
+          'code=', event.code,
+          'reason=', event.reason,
+          'wasClean=', event.wasClean
+        );
         this.updateState('disconnected');
         this.ws = null;
         if (!this.isStopped) {
@@ -69,16 +88,24 @@ class LiveWebSocketService {
   }
 
   disconnect() {
-    this.isStopped = true;
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
+    this.refCount = Math.max(0, this.refCount - 1);
+    
+    if (this.refCount > 0) {
+      return;
     }
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
-    }
-    this.updateState('disconnected');
+
+    this.disconnectTimer = setTimeout(() => {
+      this.isStopped = true;
+      if (this.reconnectTimer) {
+        clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
+      }
+      if (this.ws) {
+        this.ws.close();
+        this.ws = null;
+      }
+      this.updateState('disconnected');
+    }, 100);
   }
 
   updateState(newState) {
